@@ -17,46 +17,35 @@ def _filterBlocks($f):
     )
 ;
 
+def _isPage: type == "object" and has("title");
+def _isBlock: type == "object" and has("string");
+def _pageRef($base): "\\[\\[" + $base + "\\]\\]";
+def _tag($base): "#" + _pageRef($base);
+
 # Replaces block refs with text mapping in $blocks
 # TODO: test this works with multiple refs
 def _replaceBlockRefs($blocks):
-  map(
-    select(
-      .string
-      | test("(\\(\\([[:alnum:]]*\\)\\))")
+  match("\\(\\(([[:alnum:]]*)\\)\\)"; "g") as $mdata
+  | gsub(
+      "\\(\\(" + $mdata.captures[0].string + "\\)\\)";
+      $blocks[$mdata.captures[0].string];
+      "g"
     )
-  )
-  | walk(
-    if type == "object" then
-      .string |= (
-        match("\\(\\(([[:alnum:]]*)\\)\\)"; "g") as $mdata
-        | gsub(
-            "\\(\\(" + $mdata.captures[0].string + "\\)\\)";
-            $blocks[$mdata.captures[0].string];
-            "g"
-          )
-      )
-    else
-      .
-    end
-  )
 ;
 
-def _blockObj:
+def slimBlock:
   {
-    string,
     uid,
-    heading,
-    "text-align",
-    children: [.children[]? | .. | objects | _blockObj]
+    string,
+    children: [.children[]? | slimBlock]
   }
 ;
-def _pageObj:
-  {title, children: [.children[] | .. | objects | _blockObj]}
+def slimPage:
+  {
+    title,
+    children: [.children[]? | slimBlock]
+  }
 ;
-
-def _pageRef($base): "\\[\\[" + $base + "\\]\\]";
-def _tag($base): "#" + _pageRef($base);
 
 # Page Titles
 def pageTitles:
@@ -69,27 +58,27 @@ def sortedPageTitles(o):
 ;
 def sortedPageTitles: sortedPageTitles("asc");
 
-# Simple finders
-def _coreFinder(tester):
-  recurse
-  | arrays
-  | map(
-      select(
-        .string
-        | strings
-        | tester
+# Simple block finders
+def _coreBlockFinder(tester):
+  reduce (
+    ..
+    | select(
+        _isBlock
+        and (.string | tester)
       )
-    )
-  | select(. | length | . != 0)[]
-  | _blockObj
+  ) as $item ([];
+    . + [($item | slimBlock)]
+  )
 ;
 
+#TODO add option to only include blocks and not children of blocks
+
 def findBlocksWithTag($tag):
-  _coreFinder(test(_tag($tag)))
+  _coreBlockFinder(test(_tag($tag)))
 ;
 
 def findBlocksWithPageRef($page):
-  _coreFinder(test(_pageRef($page)))
+  _coreBlockFinder(test(_pageRef($page)))
 ;
 
 # TODO Other Finders
@@ -107,7 +96,7 @@ def pages:
 
 # Blocks
 def blocks:
-  reduce (..|select(type=="object" and has("string"))) as $item ({};
+  reduce (.. | select(_isBlock)) as $item ({};
     .[$item.uid] = $item.string
   )
 ;
@@ -119,8 +108,8 @@ def exportRawPage($page):
       .title == $page
     )
   )
-  | .[0]
-  | _pageObj
+  | first
+  | slimPage
 ;
 
 
