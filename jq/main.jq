@@ -69,8 +69,8 @@ def sortedPageTitles(o):
 ;
 def sortedPageTitles: sortedPageTitles("asc");
 
-# Reducers
-def _coreReduce(tester):
+# Simple finders
+def _coreFinder(tester):
   recurse
   | arrays
   | map(
@@ -84,12 +84,18 @@ def _coreReduce(tester):
   | _blockObj
 ;
 
-def blockReduceTag($tag):
-  _coreReduce(test(_tag($tag)))
+def findBlocksWithTag($tag):
+  _coreFinder(test(_tag($tag)))
 ;
 
-def blockReducePageRef($page):
-  _coreReduce(test(_pageRef($page)))
+def findBlocksWithPageRef($page):
+  _coreFinder(test(_pageRef($page)))
+;
+
+# TODO Other Finders
+# - find pages that have refs or tags
+# - find pages that do not
+# - generalized query?
 # Blocks
 def blocks:
   reduce (..|select(type=="object" and has("string"))) as $item ({};
