@@ -1,0 +1,20 @@
+{
+  "name": "roam",
+  "version": "0.1.0",
+  "author": {
+    "name": "Kevin Smith",
+    "url": "http://kevinsmith.cc"
+  },
+  "main": "./jq/main.jq",
+  "dependencies": {},
+  "engines": {
+    "jq": "^1.5.0",
+    "jqnpm": "^1.0.0"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://opensource.org/licenses/MIT"
+    }
+  ]
+}
