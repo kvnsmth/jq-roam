@@ -96,6 +96,15 @@ def findBlocksWithPageRef($page):
 # - find pages that have refs or tags
 # - find pages that do not
 # - generalized query?
+
+
+# Pages
+def pages:
+  map(
+    {title}
+  )
+;
+
 # Blocks
 def blocks:
   reduce (..|select(type=="object" and has("string"))) as $item ({};
