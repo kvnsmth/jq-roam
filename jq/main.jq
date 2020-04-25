@@ -17,6 +17,31 @@ def _filterBlocks($f):
     )
 ;
 
+# Replaces block refs with text mapping in $blocks
+# TODO: test this works with multiple refs
+def _replaceBlockRefs($blocks):
+  map(
+    select(
+      .string
+      | test("(\\(\\([[:alnum:]]*\\)\\))")
+    )
+  )
+  | walk(
+    if type == "object" then
+      .string |= (
+        match("\\(\\(([[:alnum:]]*)\\)\\)"; "g") as $mdata
+        | gsub(
+            "\\(\\(" + $mdata.captures[0].string + "\\)\\)";
+            $blocks[$mdata.captures[0].string];
+            "g"
+          )
+      )
+    else
+      .
+    end
+  )
+;
+
 def _blockObj:
   {
     string,
@@ -65,6 +90,11 @@ def blockReduceTag($tag):
 
 def blockReducePageRef($page):
   _coreReduce(test(_pageRef($page)))
+# Blocks
+def blocks:
+  reduce (..|select(type=="object" and has("string"))) as $item ({};
+    .[$item.uid] = $item.string
+  )
 ;
 
 # Export
@@ -80,13 +110,23 @@ def exportRawPage($page):
 
 
 def _exportMarkdownPage($page; filter):
-  exportRawPage($page)
+  {
+    "page": exportRawPage($page),
+    "blocks": blocks
+  } as $data 
+  | $data.page
   | [
     {
       "h1": .title
     },
+    # TODO
+    # subheaders
+    # unordered lists for children of children
     {
-      "p": .children | filter | .[].string
+      "p": .children
+            | filter
+            | _replaceBlockRefs($data.blocks)
+            | .[].string
     }
   ]
 ;
