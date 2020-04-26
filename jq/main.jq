@@ -25,18 +25,27 @@ def _tag($base): "#" + _pageRef($base);
 # Replaces block refs with text mapping in $blocks
 # TODO: test this works with multiple refs
 def _replaceBlockRefs($blocks):
-  match("\\(\\(([[:alnum:]]*)\\)\\)"; "g") as $mdata
-  | gsub(
-      "\\(\\(" + $mdata.captures[0].string + "\\)\\)";
-      $blocks[$mdata.captures[0].string];
-      "g"
-    )
+  if test("\\(\\(([[:alnum:]]*)\\)\\)") then
+    match("\\(\\(([[:alnum:]]*)\\)\\)"; "g") as $mdata
+    | gsub(
+        "\\(\\(" + $mdata.captures[0].string + "\\)\\)";
+        $blocks[$mdata.captures[0].string];
+        "g"
+      )
+  else
+    .
+  end
+;
+
+def _emptyString:
+  . // ""
 ;
 
 def slimBlock:
   {
     uid,
     string,
+    heading,
     children: [.children[]? | slimBlock]
   }
 ;
@@ -112,27 +121,65 @@ def exportRawPage($page):
   | slimPage
 ;
 
+# . is a heading from a block
+def _blockMarkdownTag:
+  if . == 1 then
+    "h1"
+  elif . == 2 then
+    "h2"
+  elif . == 3 then
+    "h3"
+  else
+    "p"
+  end
+;
+# . is a string
+def _mString($dbBlocks):
+  _emptyString  | _replaceBlockRefs($dbBlocks)
+;
+def _mBlockList($dbBlocks):
+  reduce .children[]? as $listItem ([];
+    . + if ($listItem.children? | length) > 0 then
+      [
+        ($listItem.string | _mString($dbBlocks)),
+        {
+          "ul": ($listItem | _mBlockList($dbBlocks))
+        }
+      ]
+    else
+      [($listItem.string | _mString($dbBlocks))]
+    end
+  )
+;
+def _mBlockListElem($item; $dbBlocks):
+  if ($item.children? | length) > 0 then
+    [{
+      "ul": ($item | _mBlockList($dbBlocks))
+    }]
+  else
+    null
+  end
+;
+def _mBlock($item; $dbBlocks):
+  [{
+    ($item.heading? | _blockMarkdownTag): (
+      $item.string | _mString($dbBlocks)
+    )
+  }]
+  | (. + _mBlockListElem($item; $dbBlocks))
+;
 
-def _exportMarkdownPage($page; filter):
+def _exportMarkdownPage($page; blockFilter):
   {
     "page": exportRawPage($page),
     "blocks": blocks
-  } as $data 
-  | $data.page
-  | [
-    {
-      "h1": .title
-    },
-    # TODO
-    # subheaders
-    # unordered lists for children of children
-    {
-      "p": .children
-            | filter
-            | _replaceBlockRefs($data.blocks)
-            | .[].string
-    }
-  ]
+  } as $data
+  | $data.blocks as $dbBlocks
+  | reduce $data.page.children[] as $item ([{
+      "h1": $data.page.title
+    }];
+    . += ($item | _mBlock($item; $dbBlocks))
+  )
 ;
 def exportMarkdownPage($page; $tag):
   _exportMarkdownPage($page; _filterBlocks(_tag($tag)))
