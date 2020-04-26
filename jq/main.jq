@@ -22,16 +22,19 @@ def _isBlock: type == "object" and has("string");
 def _pageRef($base): "\\[\\[" + $base + "\\]\\]";
 def _tag($base): "#" + _pageRef($base);
 
-# Replaces block refs with text mapping in $blocks
-# TODO: test this works with multiple refs
-def _replaceBlockRefs($blocks):
+# Replaces block refs with text mapping in $dbBlocks
+def _replaceBlockRefs($dbBlocks):
   if test("\\(\\(([[:alnum:]]*)\\)\\)") then
-    match("\\(\\(([[:alnum:]]*)\\)\\)"; "g") as $mdata
-    | gsub(
-        "\\(\\(" + $mdata.captures[0].string + "\\)\\)";
-        $blocks[$mdata.captures[0].string];
+    # wrap the match call in brackets to put outputs
+    # in a single array
+    [match("\\(\\(([[:alnum:]]*)\\)\\)"; "g")] as $matches
+    | reduce $matches[] as $match (.;
+      . |= gsub(
+        "\\(\\(" + $match.captures[0].string + "\\)\\)";
+        $dbBlocks[$match.captures[0].string];
         "g"
       )
+    )
   else
     .
   end
