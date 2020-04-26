@@ -8,13 +8,11 @@ def _order($o):
 ;
 
 def _filterBlocks($f):
-  map(
-      select(
-        .string
-        | strings
-        | test($f) == false
-      )
-    )
+  select(
+    .string?
+    | strings
+    | test($f) == false
+  )
 ;
 
 def _isPage: type == "object" and has("title");
@@ -140,13 +138,14 @@ def _blockMarkdownTag:
 def _mString($dbBlocks):
   _emptyString  | _replaceBlockRefs($dbBlocks)
 ;
-def _mBlockList($dbBlocks):
-  reduce .children[]? as $listItem ([];
+# . is a block
+def _mBlockList($dbBlocks; blockFilter):
+  reduce (.children[]? | blockFilter) as $listItem ([];
     . + if ($listItem.children? | length) > 0 then
       [
         ($listItem.string | _mString($dbBlocks)),
         {
-          "ul": ($listItem | _mBlockList($dbBlocks))
+          "ul": ($listItem | _mBlockList($dbBlocks; blockFilter))
         }
       ]
     else
@@ -154,22 +153,22 @@ def _mBlockList($dbBlocks):
     end
   )
 ;
-def _mBlockListElem($item; $dbBlocks):
+def _mBlockListElem($item; $dbBlocks; blockFilter):
   if ($item.children? | length) > 0 then
     [{
-      "ul": ($item | _mBlockList($dbBlocks))
+      "ul": ($item | _mBlockList($dbBlocks; blockFilter))
     }]
   else
     null
   end
 ;
-def _mBlock($item; $dbBlocks):
+def _mBlock($item; $dbBlocks; blockFilter):
   [{
     ($item.heading? | _blockMarkdownTag): (
       $item.string | _mString($dbBlocks)
     )
   }]
-  | (. + _mBlockListElem($item; $dbBlocks))
+  | (. + _mBlockListElem($item; $dbBlocks; blockFilter))
 ;
 
 def _exportMarkdownPage($page; blockFilter):
@@ -178,10 +177,10 @@ def _exportMarkdownPage($page; blockFilter):
     "blocks": blocks
   } as $data
   | $data.blocks as $dbBlocks
-  | reduce $data.page.children[] as $item ([{
+  | reduce ($data.page.children[] | blockFilter) as $item ([{
       "h1": $data.page.title
     }];
-    . += ($item | _mBlock($item; $dbBlocks))
+    . += ($item | _mBlock($item; $dbBlocks; blockFilter))
   )
 ;
 def exportMarkdownPage($page; $tag):
