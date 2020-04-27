@@ -7,22 +7,15 @@ def _order($o):
   end
 ;
 
-def _filterBlocks($f):
-  select(
-    .string?
-    | strings
-    | test($f) == false
-  )
-;
-
 def _isPage: type == "object" and has("title");
 def _isBlock: type == "object" and has("string");
 def _pageRef($base): "\\[\\[" + $base + "\\]\\]";
-def _tag($base): "#" + _pageRef($base);
+def _pageTag($base): "#" + _pageRef($base);
+def _baseTag($base): "#" + $base;
 
 # Replaces block refs with text mapping in $dbBlocks
 def _replaceBlockRefs($dbBlocks):
-  if test("\\(\\(([[:alnum:]]*)\\)\\)") then
+  if $dbBlocks != null and test("\\(\\(([[:alnum:]]*)\\)\\)") then
     # wrap the match call in brackets to put outputs
     # in a single array
     [match("\\(\\(([[:alnum:]]*)\\)\\)"; "g")] as $matches
@@ -42,18 +35,20 @@ def _emptyString:
   . // ""
 ;
 
-def slimBlock:
+def slimBlock($dbBlocks):
   {
     uid,
-    string,
+    string: (.string | _emptyString | _replaceBlockRefs($dbBlocks)),
     heading,
-    children: [.children[]? | slimBlock]
+    children: [.children[]? | slimBlock($dbBlocks)]
   }
 ;
-def slimPage:
+def slimPage($dbBlocks):
   {
     title,
-    children: [.children[]? | slimBlock]
+    "create-time": .["create-time"],
+    "edit-time": .["edit-time"],
+    children: [.children[]? | slimBlock($dbBlocks)]
   }
 ;
 
@@ -77,7 +72,7 @@ def _coreBlockFinder(tester):
         and (.string | tester)
       )
   ) as $item ([];
-    . + [($item | slimBlock)]
+    . + [($item | slimBlock(null))]
   )
 ;
 
@@ -97,13 +92,6 @@ def findBlocksWithPageRef($page):
 # - generalized query?
 
 
-# Pages
-def pages:
-  map(
-    {title}
-  )
-;
-
 # Blocks
 def blocks:
   reduce (.. | select(_isBlock)) as $item ({};
@@ -111,16 +99,24 @@ def blocks:
   )
 ;
 
-# Export
-def exportRawPage($page):
-  map(
-    select(
-      .title == $page
-    )
+# Pages
+def pages:
+  {
+    "pages": .,
+    "blocks": blocks
+  } as $data
+  | map(
+    slimPage($data.blocks)
   )
-  | first
-  | slimPage
 ;
+
+def page($page):
+  pages
+  | map(select(.title == $page))
+  | first
+;
+
+# Markdown
 
 # . is a heading from a block
 def _blockMarkdownTag:
@@ -134,58 +130,67 @@ def _blockMarkdownTag:
     "p"
   end
 ;
-# . is a string
-def _mString($dbBlocks):
-  _emptyString  | _replaceBlockRefs($dbBlocks)
-;
-# . is a block
-def _mBlockList($dbBlocks; blockFilter):
-  reduce (.children[]? | blockFilter) as $listItem ([];
+def _mBlockList:
+  reduce (.children[]?) as $listItem ([];
     . + if ($listItem.children? | length) > 0 then
       [
-        ($listItem.string | _mString($dbBlocks)),
+        ($listItem.string),
         {
-          "ul": ($listItem | _mBlockList($dbBlocks; blockFilter))
+          "ul": ($listItem | _mBlockList)
         }
       ]
     else
-      [($listItem.string | _mString($dbBlocks))]
+      [$listItem.string]
     end
   )
 ;
-def _mBlockListElem($item; $dbBlocks; blockFilter):
-  if ($item.children? | length) > 0 then
+def _mBlockListElem:
+  if (.children? | length) > 0 then
     [{
-      "ul": ($item | _mBlockList($dbBlocks; blockFilter))
+      "ul": _mBlockList
     }]
   else
     null
   end
 ;
-def _mBlock($item; $dbBlocks; blockFilter):
+def _mBlock:
   [{
-    ($item.heading? | _blockMarkdownTag): (
-      $item.string | _mString($dbBlocks)
-    )
-  }]
-  | (. + _mBlockListElem($item; $dbBlocks; blockFilter))
+    (.heading? | _blockMarkdownTag): .string
+  }] + _mBlockListElem
 ;
-
-def _exportMarkdownPage($page; blockFilter):
-  {
-    "page": exportRawPage($page),
-    "blocks": blocks
-  } as $data
-  | $data.blocks as $dbBlocks
-  | reduce ($data.page.children[] | blockFilter) as $item ([{
-      "h1": $data.page.title
-    }];
-    . += ($item | _mBlock($item; $dbBlocks; blockFilter))
+# . is array of pages or page
+# TODO handle array
+def markdown:
+  reduce (.children[]) as $item ([{
+    "h1": .title
+  }];
+    . += ($item | _mBlock)
   )
 ;
-def exportMarkdownPage($page; $tag):
-  _exportMarkdownPage($page; _filterBlocks(_tag($tag)))
+
+def removeBlocks(filter):
+  .children |= map(
+    select(filter == false)
+  )
+  | .children[]? |= removeBlocks(filter)
 ;
-def exportMarkdownPage($page):
-  _exportMarkdownPage($page; .)
+def rb(filter): removeBlocks(filter);
+
+def withTag($tag):
+  (.string | test(_baseTag($tag))) or (.string | test(_pageTag($tag)))
+;
+def wt($tag): withTag($tag);
+def withoutTag($tag):
+  wt($tag) == false
+;
+def wot($tag): withoutTag($tag);
+
+def withPageRef($pageRef):
+  .string | test(_pageRef($pageRef))
+;
+def wpr($pageRef): withPageRef($pageRef);
+def withoutPageRef($pageRef):
+  wpr($pageRef) == false
+;
+def wopr($pageRef): withoutPageRef($pageRef);
 ;
