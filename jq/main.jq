@@ -92,8 +92,36 @@ def findBlocksWithPageRef($page):
 
 # Blocks
 def blocks:
-  reduce (.. | select(_isBlock)) as $item ({};
+  reduce (.. | select(_isBlock)) as $item ([];
+    . + [{
+      uid: $item.uid,
+      string: ($item.string // ""),
+      children: ($item.children // [])
+    }]
+  )
+;
+
+def blocksLookupTable:
+  blocks
+  | reduce .[] as $item ({};
     .[$item.uid] = $item.string
+  )
+;
+
+# TODO rn this will return every block in the ancestry for a
+# given match, maybe make an option to only check the block itself
+# and not its children
+def removeBlocks(filter):
+  map(
+    select(
+      def _checkChildren:
+        .children[]?
+        | . as $child
+        | (filter == false)
+        | (. or ($child | _checkChildren))
+      ;
+      [filter == false, _checkChildren] | any
+    )
   )
 ;
 
@@ -101,13 +129,12 @@ def blocks:
 def pages:
   {
     "pages": .,
-    "blocks": blocks
+    "blocks": blocksLookupTable
   } as $data
   | map(
     slimPage($data.blocks)
   )
 ;
-
 def page($page):
   pages
   | map(select(.title == $page))
@@ -115,8 +142,6 @@ def page($page):
 ;
 
 # Markdown
-
-# . is a heading from a block
 def _blockMarkdownTag:
   if . == 1 then
     "h1"
@@ -156,7 +181,6 @@ def _mBlock:
     (.heading? | _blockMarkdownTag): .string
   }] + _mBlockListElem
 ;
-# . is array of pages or page
 def markdown:
   if type == "array" then
     map(markdown)
@@ -172,10 +196,10 @@ def markdown:
 # Filering TODO
 # - make tags exact match, right now it will do prefix matching (eg "Person" matches #Personal)
 # - filter for page titles
+# - filter out daily notes pages
 # - generic filter that handles page refs and tags
 # - prefix filters (eg withPrefix("App") to match [[App/Roam]])
 # - generic filter that does string contains on strings
-# - filter for blocks (instead of just filtering pages)
 # - inverse ops from remove, keepPages / keepBlocks
 
 # Page filtering
@@ -183,30 +207,30 @@ def removePages(filter):
   map(
     select(
       # recursively check children and accumulate filter responses
-      def _sp:
+      def _checkChildren:
         .children[]?
         | . as $child
         | (filter == false)
-        | (. or ($child | _sp))
+        | (. or ($child | _checkChildren))
       ;
-      [_sp] | any
+      [_checkChildren] | any
     )
   )
 ;
 def rp(filter): removePages(filter);
 
 # Block Removal and associated tag/page ref filters
-def removeBlocks(filter):
+def removePageBlocks(filter):
   if type == "array" then
-    map(removeBlocks(filter))
+    map(removePageBlocks(filter))
   else
     .children |= map(
       select(filter == false)
     )
-    | .children[]? |= removeBlocks(filter)
+    | .children[]? |= removePageBlocks(filter)
   end
 ;
-def rb(filter): removeBlocks(filter);
+def rpb(filter): removePageBlocks(filter);
 
 def withTag($tag):
   (.string | test(_baseTag($tag))) or (.string | test(_pageTag($tag)))
