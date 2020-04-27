@@ -195,11 +195,16 @@ def removePages(filter):
 ;
 def rp(filter): removePages(filter);
 
+# Block Removal and associated tag/page ref filters
 def removeBlocks(filter):
-  .children |= map(
-    select(filter == false)
-  )
-  | .children[]? |= removeBlocks(filter)
+  if type == "array" then
+    map(removeBlocks(filter))
+  else
+    .children |= map(
+      select(filter == false)
+    )
+    | .children[]? |= removeBlocks(filter)
+  end
 ;
 def rb(filter): removeBlocks(filter);
 
