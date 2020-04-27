@@ -76,8 +76,6 @@ def _coreBlockFinder(tester):
   )
 ;
 
-#TODO add option to only include blocks and not children of blocks
-
 def findBlocksWithTag($tag):
   _coreBlockFinder(test(_tag($tag)))
 ;
@@ -159,12 +157,17 @@ def _mBlock:
   }] + _mBlockListElem
 ;
 # . is array of pages or page
-# TODO handle array
 def markdown:
-  reduce (.children[]) as $item ([{
-    "h1": .title
-  }];
-    . += ($item | _mBlock)
+  if type == "array" then
+    map(markdown)
+  else
+    reduce (.children[]) as $item ([{
+      "h1": .title
+    }];
+      . += ($item | _mBlock)
+    )
+  end
+;
   )
 ;
 
