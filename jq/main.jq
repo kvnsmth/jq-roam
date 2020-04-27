@@ -168,8 +168,32 @@ def markdown:
     )
   end
 ;
+
+# Filering TODO
+# - make tags exact match, right now it will do prefix matching (eg "Person" matches #Personal)
+# - filter for page titles
+# - generic filter that handles page refs and tags
+# - prefix filters (eg withPrefix("App") to match [[App/Roam]])
+# - generic filter that does string contains on strings
+# - filter for blocks (instead of just filtering pages)
+# - inverse ops from remove, keepPages / keepBlocks
+
+# Page filtering
+def removePages(filter):
+  map(
+    select(
+      # recursively check children and accumulate filter responses
+      def _sp:
+        .children[]?
+        | . as $child
+        | (filter == false)
+        | (. or ($child | _sp))
+      ;
+      [_sp] | any
+    )
   )
 ;
+def rp(filter): removePages(filter);
 
 def removeBlocks(filter):
   .children |= map(
