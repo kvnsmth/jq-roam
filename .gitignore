@@ -1,0 +1,9 @@
+# General macOS stuff
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# jq-roam specific
+
+# test data for easy local testing
+test-data/
