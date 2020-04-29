@@ -1,12 +1,4 @@
-# Utils
-def _order($o):
-  if o == "desc" then
-    reverse
-  else # "asc" or default
-    .
-  end
-;
-
+# A few utility functions to clean up code
 def _isPage: type == "object" and has("title");
 def _isBlock: type == "object" and has("string");
 def _pageRef($base): "\\[\\[" + $base + "\\]\\]";
@@ -31,65 +23,6 @@ def _replaceBlockRefs($dbBlocks):
   end
 ;
 
-def _emptyString:
-  . // ""
-;
-
-def slimBlock($dbBlocks):
-  {
-    uid,
-    string: (.string | _emptyString | _replaceBlockRefs($dbBlocks)),
-    heading,
-    children: [.children[]? | slimBlock($dbBlocks)]
-  }
-;
-def slimPage($dbBlocks):
-  {
-    title,
-    "create-time": .["create-time"],
-    "edit-time": .["edit-time"],
-    children: [.children[]? | slimBlock($dbBlocks)]
-  }
-;
-
-# Page Titles
-def pageTitles:
-  .[].title
-;
-def sortedPageTitles(o):
-  sort_by(.title)
-  | _order(o)
-  | pageTitles
-;
-def sortedPageTitles: sortedPageTitles("asc");
-
-# Simple block finders
-def _coreBlockFinder(tester):
-  reduce (
-    ..
-    | select(
-        _isBlock
-        and (.string | tester)
-      )
-  ) as $item ([];
-    . + [($item | slimBlock(null))]
-  )
-;
-
-def findBlocksWithTag($tag):
-  _coreBlockFinder(test(_tag($tag)))
-;
-
-def findBlocksWithPageRef($page):
-  _coreBlockFinder(test(_pageRef($page)))
-;
-
-# TODO Other Finders
-# - find pages that have refs or tags
-# - find pages that do not
-# - generalized query?
-
-
 # Blocks
 def blocks:
   reduce (.. | select(_isBlock)) as $item ([];
@@ -98,13 +31,6 @@ def blocks:
       string: ($item.string // ""),
       children: ($item.children // [])
     }]
-  )
-;
-
-def blocksLookupTable:
-  blocks
-  | reduce .[] as $item ({};
-    .[$item.uid] = $item.string
   )
 ;
 
@@ -124,8 +50,42 @@ def removeBlocks(filter):
     )
   )
 ;
+def rb(filter): removeBlocks(filter);
 
+
+# creates a key-value data structure that is useful
+# for looking blocks up by their uid
+def blocksLookupTable:
+  blocks
+  | reduce .[] as $item ({};
+    .[$item.uid] = $item.string
+  )
+;
+
+# returns a block object without every key
+# also replaces block refs
+def slimBlock($dbBlocks):
+  {
+    uid,
+    string: ((.string // "") | _replaceBlockRefs($dbBlocks)),
+    heading,
+    children: [.children[]? | slimBlock($dbBlocks)]
+  }
+;
+
+# --------------
 # Pages
+# --------------
+
+# returns page object with every key
+def slimPage($dbBlocks):
+  {
+    title,
+    "create-time": .["create-time"],
+    "edit-time": .["edit-time"],
+    children: [.children[]? | slimBlock($dbBlocks)]
+  }
+;
 def pages:
   {
     "pages": .,
@@ -141,7 +101,9 @@ def page($page):
   | first
 ;
 
+# --------------
 # Markdown
+# --------------
 def _blockMarkdownTag:
   if . == 1 then
     "h1"
@@ -193,7 +155,11 @@ def markdown:
   end
 ;
 
-# Filering TODO
+# --------------
+# Filering
+# --------------
+
+# TODO
 # - make tags exact match, right now it will do prefix matching (eg "Person" matches #Personal)
 # - filter for page titles
 # - filter out daily notes pages
@@ -202,7 +168,6 @@ def markdown:
 # - generic filter that does string contains on strings
 # - inverse ops from remove, keepPages / keepBlocks
 
-# Page filtering
 def removePages(filter):
   map(
     select(
@@ -219,7 +184,6 @@ def removePages(filter):
 ;
 def rp(filter): removePages(filter);
 
-# Block Removal and associated tag/page ref filters
 def removePageBlocks(filter):
   if type == "array" then
     map(removePageBlocks(filter))
@@ -232,6 +196,9 @@ def removePageBlocks(filter):
 ;
 def rpb(filter): removePageBlocks(filter);
 
+# --------------
+# Filter helpers
+# --------------
 def withTag($tag):
   (.string | test(_baseTag($tag))) or (.string | test(_pageTag($tag)))
 ;
@@ -249,4 +216,3 @@ def withoutPageRef($pageRef):
   wpr($pageRef) == false
 ;
 def wopr($pageRef): withoutPageRef($pageRef);
-;
