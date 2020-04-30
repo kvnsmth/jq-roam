@@ -69,6 +69,10 @@ def removeBlocks(filter; $recursive):
   end
 ;
 def rb(filter): removeBlocks(filter; false);
+
+def children:
+  map(
+    .children[]?
   )
 ;
 
