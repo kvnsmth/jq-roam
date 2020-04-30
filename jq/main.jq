@@ -156,11 +156,15 @@ def markdown:
   if type == "array" then
     map(markdown)
   else
-    reduce (.children[]) as $item ([{
-      "h1": .title
-    }];
-      . += ($item | _mBlock)
-    )
+    if _isBlock then
+      _mBlock
+    else
+      reduce (.children[]) as $item ([{
+        "h1": .title
+      }];
+        . += ($item | _mBlock)
+      )
+    end
   end
 ;
 
