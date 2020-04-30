@@ -24,13 +24,26 @@ def _replaceBlockRefs($dbBlocks):
 ;
 
 # Blocks
+def slimBlock($dbBlocks):
+  def _rbr:
+    if $dbBlocks != null then
+      _replaceBlockRefs($dbBlocks)
+    else
+      .
+    end
+  ;
+  {
+    uid,
+    string: ((.string // "") | _rbr),
+    heading,
+    "create-time": .["create-time"],
+    "edit-time": .["edit-time"],
+    children: [.children[]? | slimBlock($dbBlocks)]
+  }
+;
 def blocks:
   reduce (.. | select(_isBlock)) as $item ([];
-    . + [{
-      uid: $item.uid,
-      string: ($item.string // ""),
-      children: ($item.children // [])
-    }]
+    . + [$item | slimBlock(null)]
   )
 ;
 
@@ -60,17 +73,6 @@ def blocksLookupTable:
   | reduce .[] as $item ({};
     .[$item.uid] = $item.string
   )
-;
-
-# returns a block object without every key
-# also replaces block refs
-def slimBlock($dbBlocks):
-  {
-    uid,
-    string: ((.string // "") | _replaceBlockRefs($dbBlocks)),
-    heading,
-    children: [.children[]? | slimBlock($dbBlocks)]
-  }
 ;
 
 # --------------
