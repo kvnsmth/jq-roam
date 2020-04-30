@@ -47,23 +47,30 @@ def blocks:
   )
 ;
 
-# TODO rn this will return every block in the ancestry for a
-# given match, maybe make an option to only check the block itself
-# and not its children
-def removeBlocks(filter):
-  map(
-    select(
-      def _checkChildren:
-        .children[]?
-        | . as $child
-        | (filter == false)
-        | (. or ($child | _checkChildren))
-      ;
-      [filter == false, _checkChildren] | any
+def removeBlocks(filter; $recursive):
+  if $recursive == true then
+    map(
+      select(
+        def _checkChildren:
+          .children[]?
+          | . as $child
+          | (filter == false)
+          | (. or ($child | _checkChildren))
+        ;
+        [filter == false, _checkChildren] | any
+      )
     )
+  else
+    map(
+      select(
+        filter == false
+      )
+    )
+  end
+;
+def rb(filter): removeBlocks(filter; false);
   )
 ;
-def rb(filter): removeBlocks(filter);
 
 
 # creates a key-value data structure that is useful
