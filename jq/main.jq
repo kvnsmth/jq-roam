@@ -4,20 +4,27 @@ def _isBlock: type == "object" and has("string");
 def _pageRef($base): "\\[\\[" + $base + "\\]\\]";
 def _pageTag($base): "#" + _pageRef($base);
 def _baseTag($base): "#" + $base;
+# regex based on nanoid.js's character class
+def _blockRefRegex: "\\(\\(([A-Za-z0-9\\-\\_]*)\\)\\)";
 
 # Replaces block refs with text mapping in $dbBlocks
 def _replaceBlockRefs($dbBlocks):
-  if $dbBlocks != null and test("\\(\\(([[:alnum:]]*)\\)\\)") then
+  if $dbBlocks != null and test(_blockRefRegex) then
     # wrap the match call in brackets to put outputs
     # in a single array
-    [match("\\(\\(([[:alnum:]]*)\\)\\)"; "g")] as $matches
-    | reduce $matches[] as $match (.;
-      . |= gsub(
-        "\\(\\(" + $match.captures[0].string + "\\)\\)";
-        $dbBlocks[$match.captures[0].string];
-        "g"
+    [match(_blockRefRegex; "g")] as $matches
+    | if $matches | length > 0 then
+      reduce $matches[] as $match (.;
+        . |= gsub(
+          "\\(\\(" + $match.captures[0].string + "\\)\\)";
+          $dbBlocks[$match.captures[0].string];
+          "g"
+        )
       )
-    )
+    | _replaceBlockRefs($dbBlocks)
+    else
+      .
+    end 
   else
     .
   end
