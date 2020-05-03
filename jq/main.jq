@@ -23,7 +23,9 @@ def _replaceBlockRefs($dbBlocks):
   end
 ;
 
+# --------------
 # Blocks
+# --------------
 def slimBlock($dbBlocks):
   def _rbr:
     if $dbBlocks != null then
@@ -41,9 +43,29 @@ def slimBlock($dbBlocks):
     children: [.children[]? | slimBlock($dbBlocks)]
   }
 ;
-def blocks:
+
+def _basicBlocks:
   reduce (.. | select(_isBlock)) as $item ([];
-    . + [$item | slimBlock(null)]
+    . + [$item]
+  )
+;
+
+# creates a key-value data structure that is useful
+# for looking blocks up by their uid
+def blocksLookupTable:
+  _basicBlocks
+  | reduce .[] as $item ({};
+    .[$item.uid] = $item.string
+  )
+;
+
+def blocks:
+  {
+    "blocks": _basicBlocks,
+    "dbBlocks": blocksLookupTable
+  } as $data
+  | reduce $data.blocks[] as $item ([];
+    . + [$item | slimBlock($data.dbBlocks)]
   )
 ;
 
@@ -73,16 +95,6 @@ def rb(filter): removeBlocks(filter; false);
 def children:
   map(
     .children[]?
-  )
-;
-
-
-# creates a key-value data structure that is useful
-# for looking blocks up by their uid
-def blocksLookupTable:
-  blocks
-  | reduce .[] as $item ({};
-    .[$item.uid] = $item.string
   )
 ;
 
