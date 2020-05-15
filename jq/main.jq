@@ -33,7 +33,7 @@ def _replaceBlockRefs($dbBlocks):
 # --------------
 # Blocks
 # --------------
-def slimBlock($dbBlocks):
+def _slimBlock($dbBlocks):
   def _rbr:
     if $dbBlocks != null then
       _replaceBlockRefs($dbBlocks)
@@ -47,7 +47,7 @@ def slimBlock($dbBlocks):
     heading,
     "create-time": .["create-time"],
     "edit-time": .["edit-time"],
-    children: [.children[]? | slimBlock($dbBlocks)]
+    children: [.children[]? | _slimBlock($dbBlocks)]
   }
 ;
 
@@ -72,7 +72,7 @@ def blocks:
     "dbBlocks": blocksLookupTable
   } as $data
   | reduce $data.blocks[] as $item ([];
-    . + [$item | slimBlock($data.dbBlocks)]
+    . + [$item | _slimBlock($data.dbBlocks)]
   )
 ;
 
@@ -113,12 +113,12 @@ def children:
 # --------------
 
 # returns page object with every key
-def slimPage($dbBlocks):
+def _slimPage($dbBlocks):
   {
     title,
     "create-time": .["create-time"],
     "edit-time": .["edit-time"],
-    children: [.children[]? | slimBlock($dbBlocks)]
+    children: [.children[]? | _slimBlock($dbBlocks)]
   }
 ;
 def pages:
@@ -127,7 +127,7 @@ def pages:
     "blocks": blocksLookupTable
   } as $data
   | map(
-    slimPage($data.blocks)
+    _slimPage($data.blocks)
   )
 ;
 def page($page):
