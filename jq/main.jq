@@ -77,6 +77,9 @@ def blocks:
 ;
 
 def removeBlocks(filter; $recursive):
+  # recursive removal is useful if you want to remove
+  # a higher order block based on a nested block matching
+  # a filter. see tests for example.
   if $recursive == true then
     map(
       select(
@@ -84,9 +87,9 @@ def removeBlocks(filter; $recursive):
           .children[]?
           | . as $child
           | (filter == false)
-          | (. or ($child | _checkChildren))
+          | (. and ($child | _checkChildren))
         ;
-        [filter == false, _checkChildren] | any
+        [filter == false, _checkChildren] | all
       )
     )
   else
@@ -130,7 +133,7 @@ def pages:
 def page($page):
   pages
   | map(select(.title == $page))
-  | first // []
+  | first
 ;
 
 # --------------
