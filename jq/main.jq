@@ -130,7 +130,7 @@ def pages:
 def page($page):
   pages
   | map(select(.title == $page))
-  | first
+  | first // []
 ;
 
 # --------------
