@@ -1,11 +1,17 @@
 {
   "name": "roam",
   "version": "0.1.0",
+  "description": "Filters for working with Roam export JSON",
+  "bugs": "https://github.com/kvnsmth/jq-roam/issues",
   "author": {
     "name": "Kevin Smith",
     "url": "http://kevinsmith.cc"
   },
   "main": "./jq/main.jq",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/kvnsmth/jq-roam.git"
+  },
   "dependencies": {},
   "engines": {
     "jq": "^1.5.0",
@@ -16,5 +22,6 @@
       "type": "MIT",
       "url": "http://opensource.org/licenses/MIT"
     }
-  ]
+  ],
+  "keywords": ["jq-package"]
 }
