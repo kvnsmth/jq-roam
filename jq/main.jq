@@ -86,16 +86,16 @@ def removeBlocks(filter; $recursive):
         def _checkChildren:
           .children[]?
           | . as $child
-          | (filter == false)
-          | (. and ($child | _checkChildren))
+          | (filter[0] == false)
+          | [., ($child | _checkChildren)]
         ;
-        [filter == false, _checkChildren] | all
+        [(filter[0] == false), _checkChildren] | flatten | filter[1]
       )
     )
   else
     map(
       select(
-        filter == false
+        filter[0] == false
       )
     )
   end
@@ -214,10 +214,10 @@ def removePages(filter):
       def _checkChildren:
         .children[]?
         | . as $child
-        | (filter == false)
-        | (. or ($child | _checkChildren))
+        | (filter[0] == false)
+        | [., ($child | _checkChildren)]
       ;
-      [_checkChildren] | any
+      [_checkChildren] | flatten | filter[1]
     )
   )
 ;
@@ -239,19 +239,19 @@ def rpb(filter): removePageBlocks(filter);
 # Filter helpers
 # --------------
 def withTag($tag):
-  (.string | test(_baseTag($tag))) or (.string | test(_pageTag($tag)))
+  [(try ((.string | test(_baseTag($tag))) or (.string | test(_pageTag($tag)))) catch true), all]
 ;
 def wt($tag): withTag($tag);
 def withoutTag($tag):
-  wt($tag) == false
+  [(wt($tag)[0] == false), any]
 ;
 def wot($tag): withoutTag($tag);
 
 def withPageRef($pageRef):
-  .string | test(_pageRef($pageRef))
+  [(try (.string | test(_pageRef($pageRef))) catch true), all]
 ;
 def wpr($pageRef): withPageRef($pageRef);
 def withoutPageRef($pageRef):
-  wpr($pageRef) == false
+  [(wpr($pageRef)[0] == false), any]
 ;
 def wopr($pageRef): withoutPageRef($pageRef);
