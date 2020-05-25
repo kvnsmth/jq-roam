@@ -102,6 +102,18 @@ def removeBlocks(filter; $recursive):
 ;
 def rb(filter): removeBlocks(filter; false);
 
+def removeBlockBlocks(filter):
+  if type == "array" then
+    map(removeBlockBlocks(filter))
+  else
+    .children |= map(
+      select(filter[0] == false)
+    )
+    | .children[]? |= removeBlockBlocks(filter)
+  end
+;
+def rbb(filter): removeBlockBlocks(filter);
+
 def children:
   map(
     .children[]?
@@ -135,6 +147,7 @@ def page($page):
   | map(select(.title == $page))
   | first
 ;
+
 
 # --------------
 # Filering
@@ -170,7 +183,7 @@ def removePageBlocks(filter):
     map(removePageBlocks(filter))
   else
     .children |= map(
-      select(filter == false)
+      select(filter[0] == false)
     )
     | .children[]? |= removePageBlocks(filter)
   end
