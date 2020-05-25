@@ -137,64 +137,6 @@ def page($page):
 ;
 
 # --------------
-# Markdown
-# --------------
-def _blockMarkdownTag:
-  if . == 1 then
-    "h1"
-  elif . == 2 then
-    "h2"
-  elif . == 3 then
-    "h3"
-  else
-    "p"
-  end
-;
-def _mBlockList:
-  reduce (.children[]?) as $listItem ([];
-    . + if ($listItem.children? | length) > 0 then
-      [
-        ($listItem.string),
-        {
-          "ul": ($listItem | _mBlockList)
-        }
-      ]
-    else
-      [$listItem.string]
-    end
-  )
-;
-def _mBlockListElem:
-  if (.children? | length) > 0 then
-    [{
-      "ul": _mBlockList
-    }]
-  else
-    null
-  end
-;
-def _mBlock:
-  [{
-    (.heading? | _blockMarkdownTag): .string
-  }] + _mBlockListElem
-;
-def markdown:
-  if type == "array" then
-    map(markdown)
-  else
-    if _isBlock then
-      _mBlock
-    else
-      reduce (.children[]) as $item ([{
-        "h1": .title
-      }];
-        . += ($item | _mBlock)
-      )
-    end
-  end
-;
-
-# --------------
 # Filering
 # --------------
 
