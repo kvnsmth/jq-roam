@@ -1,6 +1,5 @@
 # jq-roam
-
-TBD
+This was an experiment in using jq to filter and do something useful (like hook into a static site) with Roam export JSON. I got this as far as being useful for my purposes so perhaps it can be useful for others.
 
 ## Tests
 
